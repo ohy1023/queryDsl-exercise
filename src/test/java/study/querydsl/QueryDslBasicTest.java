@@ -24,8 +24,13 @@ public class QueryDslBasicTest {
     @PersistenceContext
     EntityManager em;
 
+    JPAQueryFactory queryFactory;
+
     @BeforeEach
     public void before() {
+
+        queryFactory = new JPAQueryFactory(em);
+
         Team teamA = new Team("teamA");
         Team teamB = new Team("teamB");
         em.persist(teamA);
@@ -55,20 +60,40 @@ public class QueryDslBasicTest {
     @Test
     @DisplayName("QueryDsl로 조회")
     public void startQueryDsl() throws Exception {
-    
-        // given
-        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
 
-
-        // when
         Member findMember = queryFactory.select(member)
                 .from(member)
                 .where(member.userName.eq("member1"))
                 .fetchOne();
 
-        // then
         assertThat(findMember.getUserName()).isEqualTo("member1");
         
     }
+
+    @Test
+    @DisplayName("검색 조건 쿼리")
+    public void search() throws Exception {
+
+        Member findMember = queryFactory.selectFrom(member)
+                .where(member.userName.eq("member1").and(member.age.eq(10)))
+                .fetchOne();
+
+        assertThat(findMember.getUserName()).isEqualTo("member1");
+    }
+
+    @Test
+    @DisplayName("검색 조건 쿼리 - 가독성")
+    public void searchAndParam() throws Exception {
+
+        Member findMember = queryFactory.selectFrom(member)
+                .where(
+                        member.userName.eq("member1"),
+                        member.age.eq(10)
+                )
+                .fetchOne();
+
+        assertThat(findMember.getUserName()).isEqualTo("member1");
+    }
+
         
 }

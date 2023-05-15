@@ -1,5 +1,6 @@
 package study.querydsl;
 
+import com.querydsl.core.QueryResults;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -13,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
 import study.querydsl.entity.Team;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static study.querydsl.entity.QMember.*;
@@ -48,7 +51,7 @@ public class QueryDslBasicTest {
 
     @Test
     @DisplayName("JPQL로 조회")
-    public void startJPQL() throws Exception{
+    public void startJPQL() throws Exception {
         // member1을 찾아라.
         Member findMember = em.createQuery("select m from Member m where m.userName = :userName", Member.class)
                 .setParameter("userName", "member1")
@@ -56,7 +59,7 @@ public class QueryDslBasicTest {
 
         assertThat(findMember.getUserName()).isEqualTo("member1");
     }
-    
+
     @Test
     @DisplayName("QueryDsl로 조회")
     public void startQueryDsl() throws Exception {
@@ -67,7 +70,7 @@ public class QueryDslBasicTest {
                 .fetchOne();
 
         assertThat(findMember.getUserName()).isEqualTo("member1");
-        
+
     }
 
     @Test
@@ -95,5 +98,31 @@ public class QueryDslBasicTest {
         assertThat(findMember.getUserName()).isEqualTo("member1");
     }
 
-        
+    @Test
+    public void resultFetch() {
+        //List
+        List<Member> fetch = queryFactory
+                .selectFrom(member)
+                .fetch();
+        //단 건
+        Member findMember1 = queryFactory
+                .selectFrom(member)
+                .fetchOne();
+        //처음 한 건 조회
+        Member findMember2 = queryFactory
+                .selectFrom(member)
+                .fetchFirst();
+        //페이징에서 사용
+        // queryDsl 5.0 부터 fetchResults()가 deprecated 됨
+        QueryResults<Member> results = queryFactory
+                .selectFrom(member)
+                .fetchResults();
+        //count 쿼리로 변경
+        // queryDsl 5.0 부터 fetchCount()가 deprecated 됨
+        long count = queryFactory
+                .selectFrom(member)
+                .fetchCount();
+    }
+
+
 }

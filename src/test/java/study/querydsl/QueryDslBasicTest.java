@@ -109,6 +109,7 @@ public class QueryDslBasicTest {
         //단 건
         Member findMember1 = queryFactory
                 .selectFrom(member)
+                .where(member.userName.eq("member1"))
                 .fetchOne();
         //처음 한 건 조회
         Member findMember2 = queryFactory

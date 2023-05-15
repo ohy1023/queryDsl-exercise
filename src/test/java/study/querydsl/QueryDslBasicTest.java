@@ -153,5 +153,15 @@ public class QueryDslBasicTest {
         assertThat(memberNull.getUserName()).isNull();
     }
 
+    @Test
+    @DisplayName("페이징")
+    public void paging1() {
+        List<Member> result = queryFactory.selectFrom(member)
+                .orderBy(member.userName.desc())
+                .offset(1)
+                .limit(2)
+                .fetch();
+        assertThat(result.size()).isEqualTo(2);
+    }
 
 }

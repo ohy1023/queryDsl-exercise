@@ -2,9 +2,12 @@ package study.querydsl;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PersistenceUnit;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,10 +17,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
+import study.querydsl.entity.QTeam;
 import study.querydsl.entity.Team;
 
 import java.util.List;
 
+import static com.querydsl.jpa.JPAExpressions.*;
 import static org.assertj.core.api.Assertions.*;
 import static study.querydsl.entity.QMember.*;
 import static study.querydsl.entity.QTeam.team;
@@ -257,4 +262,152 @@ public class QueryDslBasicTest {
 
     }
 
+    /**
+     * 예 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
+     */
+    @Test
+    @DisplayName("조인 - on절 (필터링)")
+    public void join_on_filtering() {
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(member.team, team)
+                .on(team.name.eq("teamA"))
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    /**
+     * 연관관계가 없는 엔티티 외부 조인
+     * 회원의 이름과 팀 이름이 같은 대상 외부 조인
+     */
+    @Test
+    @DisplayName("조인 - on절 (연간관계가 없는 엔티티 외부 조인")
+    public void join_on_no_relation() {
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(team).on(member.userName.eq(team.name))
+                .fetch();
+
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+
+    }
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
+
+    @Test
+    @DisplayName("fetch 조인 미적용")
+    public void fetchJoinNo() {
+        em.flush();
+        em.clear();
+
+        Member findMember = queryFactory.selectFrom(member)
+                .where(member.userName.eq("member1"))
+                .fetchOne();
+
+        boolean loaded =
+                emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        assertThat(loaded).as("페치 조인 미적용").isFalse();
+
+    }
+
+    @Test
+    @DisplayName("fetch 조인 적용")
+    public void fetchJoinUse() {
+        em.flush();
+        em.clear();
+
+        Member findMember = queryFactory.selectFrom(member)
+                .join(member.team, team).fetchJoin()
+                .where(member.userName.eq("member1"))
+                .fetchOne();
+
+        boolean loaded =
+                emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        assertThat(loaded).as("페치 조인 적용").isTrue();
+
+    }
+
+    /**
+     * 나이가 가장 많은 회원 조회
+     */
+    @Test
+    @DisplayName("서브 쿼리 - 나이가 가장 많은 회원 조회")
+    public void subQuery() {
+        QMember memberSub = new QMember("memberSub");
+
+        List<Member> result = queryFactory.selectFrom(member)
+                .where(member.age.eq(select(memberSub.age.max())
+                        .from(memberSub)
+                ))
+                .fetch();
+
+        assertThat(result).extracting("age").containsExactly(40);
+    }
+
+    /**
+     * 나이가 평균 이상인 회원 조회
+     */
+    @Test
+    @DisplayName("서브 쿼리 - 나이가 평균 이상인 회원 조회")
+    public void subQueryGoe() {
+        QMember memberSub = new QMember("memberSub");
+
+        List<Member> result = queryFactory.selectFrom(member)
+                .where(member.age.goe(select(memberSub.age.avg())
+                        .from(memberSub)
+                ))
+                .fetch();
+
+        assertThat(result).extracting("age").containsExactly(30, 40);
+    }
+
+    /**
+     * 서브쿼리 여러 건 처리, in 사용
+     */
+    @Test
+    @DisplayName("서브쿼리 여러 건 처리, in 사용")
+    public void subQueryIn() throws Exception {
+        QMember memberSub = new QMember("memberSub");
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .where(member.age.in(
+                        select(memberSub.age)
+                                .from(memberSub)
+                                .where(memberSub.age.gt(10))
+                ))
+                .fetch();
+        assertThat(result).extracting("age")
+                .containsExactly(20, 30, 40);
+    }
+
+    @Test
+    public void selectSubQuery() {
+
+        QMember memberSub = new QMember("memberSub");
+
+        List<Tuple> fetch = queryFactory
+                .select(member.userName,
+                        select(memberSub.age.avg())
+                                .from(memberSub)
+                ).from(member)
+                .fetch();
+        for (Tuple tuple : fetch) {
+            System.out.println("userName = " + tuple.get(member.userName));
+            System.out.println("age = " +
+                    tuple.get(select(memberSub.age.avg())
+                            .from(memberSub)));
+        }
+    }
 }

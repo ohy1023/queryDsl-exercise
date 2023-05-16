@@ -469,4 +469,27 @@ public class QueryDslBasicTest {
         }
     }
 
+    @Test
+    public void simpleProjection() {
+        List<String> result = queryFactory.select(member.userName)
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    public void tupleProjection() {
+        List<Tuple> result = queryFactory.select(member.userName, member.age)
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple.get(member.userName) = " + tuple.get(member.userName));
+            System.out.println("tuple.get(member.age) = " + tuple.get(member.age));
+        }
+    }
+
 }

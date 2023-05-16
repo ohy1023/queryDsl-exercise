@@ -4,7 +4,9 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
@@ -549,7 +551,7 @@ public class QueryDslBasicTest {
 
                         ExpressionUtils.as(JPAExpressions
                                 .select(memberSub.age.max())
-                                .from(memberSub),"age")
+                                .from(memberSub), "age")
                 ))
                 .from(member)
                 .fetch();
@@ -578,8 +580,8 @@ public class QueryDslBasicTest {
 
         List<Member> result = searchMember1(userNameParam, ageParam);
         assertThat(result.size()).isEqualTo(1);
-        
-        
+
+
     }
 
     private List<Member> searchMember1(String userNameCond, Integer ageCond) {
@@ -597,6 +599,34 @@ public class QueryDslBasicTest {
                 .where(builder)
                 .fetch();
 
+    }
+
+    @Test
+    public void dynamicQuery_WhereParam() {
+        String userNameParam = "member1";
+        Integer ageParam = 10;
+
+        List<Member> result = searchMember2(userNameParam, ageParam);
+        assertThat(result.size()).isEqualTo(1);
+    }
+
+    private List<Member> searchMember2(String userNameCond, Integer ageCond) {
+
+        return queryFactory.selectFrom(member)
+                .where(allEq(userNameCond,ageCond))
+                .fetch();
+    }
+
+    private BooleanExpression userNameEq(String userNameCond) {
+        return userNameCond != null ? member.userName.eq(userNameCond) : null;
+    }
+
+    private BooleanExpression ageEq(Integer ageCond) {
+        return ageCond != null ? member.age.eq(ageCond) : null;
+    }
+
+    private BooleanExpression allEq(String usernameCond, Integer ageCond) {
+        return userNameEq(usernameCond).and(ageEq(ageCond));
     }
 
 
